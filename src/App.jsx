@@ -208,7 +208,7 @@ function LogoBadge() {
       padding: '6px 18px 6px 10px',
       borderRadius: 100,
     }}>
-      <img src="/logo-rumo.png" alt="" style={{ height: 16, width: 'auto' }} />
+      <img src={`${import.meta.env.BASE_URL}logo-rumo.png`} alt="" style={{ height: 16, width: 'auto' }} />
       Instituto Rumo
     </div>
   )
