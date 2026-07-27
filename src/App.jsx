@@ -146,6 +146,7 @@ function openWhatsApp() {
 
 function getResult(score) {
   if (score >= 35) return {
+    id:     'R1',
     badge:  'Presença que ajuda, mas pode ganhar mais estrutura',
     title:  'Você tende a apoiar com presença, mas talvez falte método.',
     text:   'Você está por perto, disponível e atento. Isso já conta muito. Mas presença sozinha não constrói critérios. A orientação profissional dá ao seu filho um método claro para transformar esse apoio em decisões mais seguras.',
@@ -155,6 +156,7 @@ function getResult(score) {
     Icon:   CheckCircle,
   }
   if (score >= 29) return {
+    id:     'R2',
     badge:  'Um ponto de atenção na forma de apoiar',
     title:  'Você pode estar pressionando sem perceber.',
     text:   'Cobrança, prazo e comparação costumam vir de um lugar de cuidado, mas pesam mais do que ajudam. Entender essa diferença já é o primeiro passo para apoiar sem empurrar.',
@@ -164,6 +166,7 @@ function getResult(score) {
     Icon:   AlertCircle,
   }
   if (score >= 23) return {
+    id:     'R3',
     badge:  'Falta de critérios claros',
     title:  'Seu filho parece precisar de mais critérios antes de escolher.',
     text:   'Sem critérios próprios, qualquer escolha fica frágil e some no primeiro sinal de dúvida. A orientação profissional ajuda a construir esses critérios a partir de quem seu filho é, não do que ele acha que deveria escolher.',
@@ -173,6 +176,7 @@ function getResult(score) {
     Icon:   Lightbulb,
   }
   if (score >= 17) return {
+    id:     'R4',
     badge:  'Excesso de opções, não falta de interesse',
     title:  'A dúvida do seu filho pode estar mais ligada a excesso de opções do que falta de interesse.',
     text:   'Hoje existem tantos caminhos possíveis que decidir virou mais difícil, não mais fácil. Isso não é falta de vontade. É sobrecarga de possibilidades sem um filtro para organizá-las.',
@@ -182,6 +186,7 @@ function getResult(score) {
     Icon:   Shuffle,
   }
   return {
+    id:     'R5',
     badge:  'Um momento importante de decidir',
     title:  'Talvez seja um bom momento de buscar apoio profissional.',
     text:   'Os sinais indicam bastante confusão e pouca estrutura para decidir com segurança. Isso não é motivo de alarme. É só o sinal de que esse é um bom momento para buscar ajuda especializada.',
@@ -852,7 +857,16 @@ export default function App() {
 
   function handleCapture(data) {
     setLead(data)
-    sendLead({ ...data, pontuacao: totalScore })
+    // O resultado vai junto com o lead: é ele que o e-mail 1 da automação
+    // devolve pra pessoa. Sem isso o Brevo só tem a pontuação crua.
+    const resultado = getResult(totalScore)
+    sendLead({
+      ...data,
+      pontuacao: totalScore,
+      perfil: resultado.id,
+      resultadoTitulo: resultado.title,
+      resultadoTexto: resultado.text,
+    })
     setScreen('results')
   }
 
