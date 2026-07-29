@@ -802,6 +802,55 @@ function ResultsScreen({ score, lead, onRestart }) {
           {cta}
         </motion.button>
 
+        {/* Aviso do e-mail — pede que a pessoa abra o e-mail 1 da automação.
+            Abrir/responder o primeiro e-mail é o que ensina a caixa de entrada
+            a reconhecer os próximos 5 da sequência. */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          style={{
+            background: '#fff',
+            border: `2px dashed ${C.verde}38`,
+            borderRadius: 18,
+            padding: '20px 20px 18px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 34, height: 34, flexShrink: 0,
+              background: C.verde,
+              borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Mail color="#fff" size={17} strokeWidth={2.2} />
+            </div>
+            <p style={{
+              margin: 0, fontSize: 14, fontWeight: 800,
+              color: C.preto, lineHeight: 1.35,
+            }}>
+              Mandei mais uma coisa pro seu e-mail ✉️
+            </p>
+          </div>
+
+          <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#555', lineHeight: 1.7, fontWeight: 500 }}>
+            Além desse resultado, chega em instantes uma pergunta simples pra você
+            testar com seu filho ainda esta semana.
+          </p>
+
+          <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#555', lineHeight: 1.7, fontWeight: 500 }}>
+            <b style={{ color: C.preto }}>Abra esse primeiro e-mail assim que ele chegar.</b>{' '}
+            É o que ensina a sua caixa de entrada a reconhecer os próximos — sem isso,
+            eles somem no meio do caminho.
+          </p>
+
+          <p style={{ margin: 0, fontSize: 13, color: '#777', lineHeight: 1.7, fontWeight: 500 }}>
+            🔎 Não achou? Olhe em <b>Promoções</b> ou <b>Spam</b> e arraste pra caixa
+            principal. Procure por <b style={{ color: C.verde }}>Cláudia Botelho | Instituto Rumo</b>.
+          </p>
+        </motion.div>
+
         {/* Refazer */}
         <button
           onClick={onRestart}
