@@ -503,34 +503,19 @@ function QuestionScreen({ question, index, total, onAnswer }) {
   )
 }
 
-// ─── Códigos internacionais (DDI) ─────────────────────────────────────────────
-const DDI_OPTIONS = [
-  { code: '+55', label: 'Brasil +55' },
-  { code: '+351', label: 'Portugal +351' },
-  { code: '+1', label: 'EUA/Canadá +1' },
-  { code: '+34', label: 'Espanha +34' },
-  { code: '+44', label: 'Reino Unido +44' },
-  { code: '+49', label: 'Alemanha +49' },
-  { code: '+33', label: 'França +33' },
-  { code: '+39', label: 'Itália +39' },
-  { code: '+54', label: 'Argentina +54' },
-  { code: '+598', label: 'Uruguai +598' },
-  { code: '+595', label: 'Paraguai +595' },
-]
-
 // ─── Tela: Captura de lead ────────────────────────────────────────────────────
-function CaptureScreen({ onSubmit }) {
+function CaptureScreen({ onSubmit, respondidas, total }) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [ddi, setDdi] = useState('+55')
-  const [whatsapp, setWhatsapp] = useState('')
 
-  const valido = nome.trim().length > 1 && /\S+@\S+\.\S+/.test(email) && whatsapp.trim().length >= 8
+  const valido = nome.trim().length > 1 && /\S+@\S+\.\S+/.test(email)
+  const faltam = total - respondidas
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!valido) return
-    onSubmit({ nome: nome.trim(), email: email.trim(), whatsapp: `${ddi} ${whatsapp.trim()}` })
+    // whatsapp segue no payload (vazio) só para não quebrar as colunas da planilha
+    onSubmit({ nome: nome.trim(), email: email.trim(), whatsapp: '' })
   }
 
   const inputStyle = {
@@ -582,10 +567,11 @@ function CaptureScreen({ onSubmit }) {
             lineHeight: 1.35,
             marginBottom: 12,
           }}>
-            Seu resultado está pronto!
+            Pra onde eu envio o seu resultado?
           </h2>
           <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, fontWeight: 500 }}>
-            Deixe seus dados para receber o diagnóstico completo e os próximos passos por e-mail.
+            Faltam só {faltam} perguntas. Deixo o resultado completo no seu e-mail
+            para você poder reler com calma depois.
           </p>
         </div>
 
@@ -604,25 +590,6 @@ function CaptureScreen({ onSubmit }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select
-              value={ddi}
-              onChange={(e) => setDdi(e.target.value)}
-              style={{ ...inputStyle, width: 'auto', flexShrink: 0, paddingRight: 8 }}
-            >
-              {DDI_OPTIONS.map((d) => (
-                <option key={d.code} value={d.code}>{d.label}</option>
-              ))}
-            </select>
-            <input
-              style={inputStyle}
-              type="tel"
-              placeholder="WhatsApp (com DDD)"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-            />
-          </div>
-
           <motion.button
             type="submit"
             whileHover={valido ? { scale: 1.02 } : {}}
@@ -646,7 +613,7 @@ function CaptureScreen({ onSubmit }) {
               marginTop: 8,
             }}
           >
-            Ver meu resultado
+            Continuar o quiz
             <ArrowRight size={18} strokeWidth={2.5} />
           </motion.button>
         </form>
@@ -886,6 +853,13 @@ function ResultsScreen({ score, lead, onRestart }) {
 }
 
 // ─── App Principal ────────────────────────────────────────────────────────────
+// Ordem das telas: intro → perguntas 1-3 → captura → perguntas 4-10 → resultado
+const CAPTURA_APOS = 3            // a captura entra depois desta pergunta
+// Envio extra na captura, para medir quem desiste no meio.
+// MANTENHA false até ajustar o Apps Script para ignorar linhas com status 'parcial'.
+// Com false, o comportamento do envio é idêntico ao de hoje: um único envio, no fim.
+const ENVIAR_LEAD_PARCIAL = false
+
 export default function App() {
   const [screen, setScreen]   = useState('intro')
   const [index, setIndex]     = useState(0)
@@ -895,29 +869,54 @@ export default function App() {
   function handleAnswer(pts) {
     const next = [...scores, pts]
     setScores(next)
+
+    // Captura no meio do caminho: quem já respondeu 3 perguntas investiu
+    // o bastante para não abandonar, e ainda falta resultado para receber.
+    if (next.length === CAPTURA_APOS && !lead) {
+      setScreen('capture')
+      return
+    }
+
     if (index + 1 < QUESTIONS.length) {
       setIndex(index + 1)
     } else {
-      setScreen('capture')
+      finalizar(next)
     }
   }
 
-  const totalScore = scores.reduce((a, b) => a + b, 0)
-
   function handleCapture(data) {
     setLead(data)
-    // O resultado vai junto com o lead: é ele que o e-mail 1 da automação
-    // devolve pra pessoa. Sem isso o Brevo só tem a pontuação crua.
-    const resultado = getResult(totalScore)
+    // status 'parcial': contato já existe, resultado ainda não.
+    if (ENVIAR_LEAD_PARCIAL) {
+      sendLead({
+        ...data,
+        status: 'parcial',
+        pontuacao: '',
+        perfil: '',
+        resultadoTitulo: '',
+        resultadoTexto: '',
+      })
+    }
+    setIndex(CAPTURA_APOS)
+    setScreen('questions')
+  }
+
+  // status 'completo': é este envio que carrega o resultado para o e-mail 1.
+  function finalizar(respostas) {
+    const total = respostas.reduce((a, b) => a + b, 0)
+    const resultado = getResult(total)
     sendLead({
-      ...data,
-      pontuacao: totalScore,
+      ...(lead || {}),
+      status: 'completo',
+      pontuacao: total,
       perfil: resultado.id,
       resultadoTitulo: resultado.title,
       resultadoTexto: resultado.text,
     })
     setScreen('results')
   }
+
+  const totalScore = scores.reduce((a, b) => a + b, 0)
 
   function restart() {
     setScreen('intro')
@@ -941,7 +940,11 @@ export default function App() {
         />
       )}
       {screen === 'capture' && (
-        <CaptureScreen onSubmit={handleCapture} />
+        <CaptureScreen
+          onSubmit={handleCapture}
+          respondidas={scores.length}
+          total={QUESTIONS.length}
+        />
       )}
       {screen === 'results' && (
         <ResultsScreen
