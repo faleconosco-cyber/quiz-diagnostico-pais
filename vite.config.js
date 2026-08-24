@@ -3,5 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/quiz-diagnostico-pais/',
+  // base relativo: o mesmo build serve na raiz (quiz.institutorumo.com) e
+  // na subpasta do GitHub Pages (/quiz-diagnostico-pais/), sem duplicar config.
+  base: './',
 })

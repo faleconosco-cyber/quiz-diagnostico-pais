@@ -503,19 +503,44 @@ function QuestionScreen({ question, index, total, onAnswer }) {
   )
 }
 
+// ─── Códigos internacionais (DDI) ─────────────────────────────────────────────
+// Família expatriada é público recorrente do Rumo: o filho estuda fora e presta
+// vestibular no Brasil. Sem o seletor, esse lead escreve o número torto ou desiste.
+const DDI_OPTIONS = [
+  { code: '+55', label: 'Brasil +55' },
+  { code: '+351', label: 'Portugal +351' },
+  { code: '+1', label: 'EUA/Canadá +1' },
+  { code: '+34', label: 'Espanha +34' },
+  { code: '+44', label: 'Reino Unido +44' },
+  { code: '+49', label: 'Alemanha +49' },
+  { code: '+33', label: 'França +33' },
+  { code: '+39', label: 'Itália +39' },
+  { code: '+54', label: 'Argentina +54' },
+  { code: '+598', label: 'Uruguai +598' },
+  { code: '+595', label: 'Paraguai +595' },
+]
+
 // ─── Tela: Captura de lead ────────────────────────────────────────────────────
 function CaptureScreen({ onSubmit, respondidas, total }) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
+  const [ddi, setDdi] = useState('+55')
+  const [whatsapp, setWhatsapp] = useState('')
 
-  const valido = nome.trim().length > 1 && /\S+@\S+\.\S+/.test(email)
+  const valido =
+    nome.trim().length > 1 &&
+    /\S+@\S+\.\S+/.test(email) &&
+    whatsapp.replace(/\D/g, '').length >= 8
   const faltam = total - respondidas
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!valido) return
-    // whatsapp segue no payload (vazio) só para não quebrar as colunas da planilha
-    onSubmit({ nome: nome.trim(), email: email.trim(), whatsapp: '' })
+    onSubmit({
+      nome: nome.trim(),
+      email: email.trim(),
+      whatsapp: `${ddi} ${whatsapp.trim()}`,
+    })
   }
 
   const inputStyle = {
@@ -590,6 +615,24 @@ function CaptureScreen({ onSubmit, respondidas, total }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select
+              value={ddi}
+              onChange={(e) => setDdi(e.target.value)}
+              style={{ ...inputStyle, width: 'auto', flexShrink: 0, paddingRight: 8 }}
+            >
+              {DDI_OPTIONS.map((d) => (
+                <option key={d.code} value={d.code}>{d.label}</option>
+              ))}
+            </select>
+            <input
+              style={inputStyle}
+              type="tel"
+              placeholder="WhatsApp (com DDD)"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+            />
+          </div>
           <motion.button
             type="submit"
             whileHover={valido ? { scale: 1.02 } : {}}
