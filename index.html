@@ -11,6 +11,21 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap"
       rel="stylesheet"
     />
+    <!-- Google Analytics 4, ligado em 07/10/2026.
+         Propriedade "Instituto Rumo", G-FW3VTE6518, a mesma do site e das
+         landings. Este quiz vive em tres enderecos ao mesmo tempo
+         (quiz.institutorumo.com, www.institutorumo.com/quiz e o GitHub Pages),
+         entao no relatorio separe por "hostname" para saber de qual veio.
+         O bloco de eventos logo abaixo ja mandava para o Pixel; agora manda
+         para o GA4 tambem, pelo mesmo caminho. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FW3VTE6518"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-FW3VTE6518');
+    </script>
+
     <!-- Meta Pixel Code -->
     <script>
       !function(f,b,e,v,n,t,s)
@@ -29,6 +44,11 @@
       (function () {
         function track(evt, params) {
           if (typeof window.fbq === 'function') window.fbq('track', evt, params)
+          // 07/10/2026: o mesmo evento vai para o GA4. Nome em minusculas
+          // porque o GA4 diferencia maiusculas e o padrao dele e snake_case.
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', evt === 'Lead' ? 'lead' : 'quiz_completo', params || {})
+          }
         }
 
         // Lead: o quiz tem um único formulário — a tela de captura — e o botão
