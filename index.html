@@ -36,13 +36,19 @@
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window,document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '409193991083455');
+      fbq('init', '710681929995178');
       fbq('track', 'PageView');
     </script>
     <script>
       // ─── Eventos do quiz (sem alterar o App.jsx) ───────────────────────────
       (function () {
+        // 08/10/2026: este quiz passou a usar o MESMO pixel do site e das
+        // landings. A separacao dos funis agora e por EVENTO e por URL, nao
+        // por pixel. O content_category abaixo viaja em todo evento e e o que
+        // mantem este quiz distinguivel dentro da gaveta comum.
+        var QUIZ = 'quiz-diagnostico-pais'
         function track(evt, params) {
+          params = Object.assign({ content_category: QUIZ }, params || {})
           if (typeof window.fbq === 'function') window.fbq('track', evt, params)
           // 07/10/2026: o mesmo evento vai para o GA4. Nome em minusculas
           // porque o GA4 diferencia maiusculas e o padrao dele e snake_case.
