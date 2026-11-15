@@ -89,12 +89,18 @@
          triagem saber se a conversa nasceu de anuncio pago ou nao.
 
          Classifica em tres rotulos, nesta ordem de prioridade:
-           Google Ads ............... gclid / gbraid / wbraid na URL, ou
-                                      utm_source=google + utm_medium=cpc
-           Google organico provavel . referrer da Busca do Google, sem
-                                      sinal de anuncio. E INFERENCIA: o
-                                      referrer pode faltar ou vir errado
-           nao identificada ......... sem sinal suficiente
+           Google Ads ................ gclid / gbraid / wbraid, ou
+                                       utm_source=google + utm_medium=cpc
+           Meta Ads .................. utm_source=meta (ou facebook, ou
+                                       instagram) + utm_medium=paid_social
+           Meta, pago nao confirmado . so fbclid, sem utm. O fbclid e posto
+                                       pelo Facebook e pelo Instagram em
+                                       QUALQUER link clicado la dentro, o
+                                       pago e o organico, inclusive o link
+                                       da bio. Por isso fica em aberto
+           Google organico provavel .. referrer da Busca, sem sinal de
+                                       anuncio. E INFERENCIA
+           nao identificada .......... sem sinal suficiente
 
          Guarda em sessionStorage, entao navegacao interna e recarregamento
          preservam o que foi detectado na chegada. O link do quiz ainda leva
@@ -115,6 +121,8 @@
     (function () {
       var CHAVE = 'rumo_origem';
       var ADS = 'Google Ads';
+      var META_ADS = 'Meta Ads';
+      var META_ABERTO = 'Meta, pago não confirmado';
       var ORGANICO = 'Google orgânico provável';
       var DESCONHECIDA = 'não identificada';
 
@@ -122,13 +130,20 @@
       var PESO = {};
       PESO[DESCONHECIDA] = 0;
       PESO[ORGANICO] = 1;
-      PESO[ADS] = 2;
+      PESO[META_ABERTO] = 2;
+      PESO[META_ADS] = 3;
+      PESO[ADS] = 3;
 
       // Codigo curto que viaja na URL do quiz, para a barra de endereco nao
       // ficar com texto acentuado no meio.
-      var POR_CODIGO = { ads: ADS, organico: ORGANICO, direto: DESCONHECIDA };
+      var POR_CODIGO = {
+        ads: ADS, meta: META_ADS, metaaberto: META_ABERTO,
+        organico: ORGANICO, direto: DESCONHECIDA
+      };
       var PARA_CODIGO = {};
       PARA_CODIGO[ADS] = 'ads';
+      PARA_CODIGO[META_ADS] = 'meta';
+      PARA_CODIGO[META_ABERTO] = 'metaaberto';
       PARA_CODIGO[ORGANICO] = 'organico';
       PARA_CODIGO[DESCONHECIDA] = 'direto';
 
@@ -149,6 +164,15 @@
                param('utm_medium').toLowerCase() === 'cpc';
       }
 
+      // O pedido era utm_source=meta. "facebook" e "instagram" entram junto
+      // porque sao os valores que as outras ferramentas escrevem sozinhas, e
+      // um deles escapando viraria lead de anuncio marcado como desconhecido.
+      function temSinalDeAnuncioMeta() {
+        var s = param('utm_source').toLowerCase();
+        return (s === 'meta' || s === 'facebook' || s === 'instagram') &&
+               param('utm_medium').toLowerCase() === 'paid_social';
+      }
+
       function veioDaBuscaDoGoogle() {
         var ref = document.referrer || '';
         if (!ref) return false;
@@ -162,8 +186,12 @@
 
       function detectarNestaPagina() {
         if (temSinalDeAnuncio()) return ADS;
+        if (temSinalDeAnuncioMeta()) return META_ADS;
         var repassada = POR_CODIGO[param('o')];
         if (repassada) return repassada;
+        // fbclid sozinho nao prova anuncio: o Meta poe ele tambem em link
+        // organico, inclusive no da bio. Fica em aberto de proposito.
+        if (param('fbclid')) return META_ABERTO;
         if (veioDaBuscaDoGoogle()) return ORGANICO;
         return null;
       }
