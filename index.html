@@ -83,6 +83,178 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+        <!-- ================================================================
+         ORIGEM DA VISITA, instalado em 15/11/2026.
+         Carimba na mensagem do WhatsApp de onde a pessoa veio, para a
+         triagem saber se a conversa nasceu de anuncio pago ou nao.
+
+         Classifica em tres rotulos, nesta ordem de prioridade:
+           Google Ads ............... gclid / gbraid / wbraid na URL, ou
+                                      utm_source=google + utm_medium=cpc
+           Google organico provavel . referrer da Busca do Google, sem
+                                      sinal de anuncio. E INFERENCIA: o
+                                      referrer pode faltar ou vir errado
+           nao identificada ......... sem sinal suficiente
+
+         Guarda em sessionStorage, entao navegacao interna e recarregamento
+         preservam o que foi detectado na chegada. O link do quiz ainda leva
+         a origem na query (?o=), porque sessionStorage nao atravessa aba
+         nova nem outro dominio, e o quiz tambem roda em quiz.institutorumo.com
+         e no GitHub Pages.
+
+         Dois caminhos para o WhatsApp, porque o site tem os dois:
+           1. <a href="wa.me/..."> no HTML    -> reescreve o href
+           2. window.open("wa.me/...") no JS  -> intercepta o window.open
+         O caso 2 e o do quiz, que monta o link dentro do bundle React.
+
+         NAO mexe em evento de conversao. Os listeners do Ads, do GA4 e do
+         Pixel continuam nos mesmos elementos: aqui so o texto da mensagem
+         muda, e ele muda antes de qualquer clique.
+         ================================================================ -->
+    <script>
+    (function () {
+      var CHAVE = 'rumo_origem';
+      var ADS = 'Google Ads';
+      var ORGANICO = 'Google orgânico provável';
+      var DESCONHECIDA = 'não identificada';
+
+      // Prioridade: um sinal mais forte sobrescreve um mais fraco ja guardado.
+      var PESO = {};
+      PESO[DESCONHECIDA] = 0;
+      PESO[ORGANICO] = 1;
+      PESO[ADS] = 2;
+
+      // Codigo curto que viaja na URL do quiz, para a barra de endereco nao
+      // ficar com texto acentuado no meio.
+      var POR_CODIGO = { ads: ADS, organico: ORGANICO, direto: DESCONHECIDA };
+      var PARA_CODIGO = {};
+      PARA_CODIGO[ADS] = 'ads';
+      PARA_CODIGO[ORGANICO] = 'organico';
+      PARA_CODIGO[DESCONHECIDA] = 'direto';
+
+      function lerGuardada() {
+        try { return sessionStorage.getItem(CHAVE); } catch (e) { return null; }
+      }
+      function guardar(valor) {
+        try { sessionStorage.setItem(CHAVE, valor); } catch (e) {}
+      }
+
+      var params;
+      try { params = new URLSearchParams(location.search); } catch (e) { params = null; }
+      function param(nome) { return params ? (params.get(nome) || '') : ''; }
+
+      function temSinalDeAnuncio() {
+        if (param('gclid') || param('gbraid') || param('wbraid')) return true;
+        return param('utm_source').toLowerCase() === 'google' &&
+               param('utm_medium').toLowerCase() === 'cpc';
+      }
+
+      function veioDaBuscaDoGoogle() {
+        var ref = document.referrer || '';
+        if (!ref) return false;
+        try {
+          var host = new URL(ref).hostname.toLowerCase();
+          // Navegacao dentro do proprio site nao e origem nova.
+          if (host === location.hostname.toLowerCase()) return false;
+          return /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
+        } catch (e) { return false; }
+      }
+
+      function detectarNestaPagina() {
+        if (temSinalDeAnuncio()) return ADS;
+        var repassada = POR_CODIGO[param('o')];
+        if (repassada) return repassada;
+        if (veioDaBuscaDoGoogle()) return ORGANICO;
+        return null;
+      }
+
+      var guardada = lerGuardada();
+      var detectada = detectarNestaPagina();
+      var origem;
+      if (detectada && (!guardada || PESO[detectada] > (PESO[guardada] || 0))) {
+        origem = detectada;
+      } else {
+        origem = guardada || DESCONHECIDA;
+      }
+      guardar(origem);
+
+      var LINHA = 'Origem da visita: ' + origem;
+      var CODIGO = PARA_CODIGO[origem] || 'direto';
+
+      function ehWhatsApp(host) {
+        return host === 'wa.me' || host === 'api.whatsapp.com';
+      }
+
+      // Reescreve o text preservando a mensagem que ja estava la.
+      // Monta a query na mao porque URLSearchParams.toString() grava espaco
+      // como "+", e nem todo cliente de WhatsApp desfaz isso.
+      function comOrigem(url) {
+        try {
+          var u = new URL(url, location.href);
+          if (!ehWhatsApp(u.hostname.toLowerCase())) return url;
+          var texto = u.searchParams.get('text') || '';
+          if (texto.indexOf('Origem da visita:') !== -1) return url;
+          var novo = texto ? texto + '\n\n' + LINHA : LINHA;
+          u.searchParams.delete('text');
+          var resto = u.searchParams.toString();
+          return u.origin + u.pathname + '?text=' + encodeURIComponent(novo) +
+                 (resto ? '&' + resto : '');
+        } catch (e) { return url; }
+      }
+
+      function comCodigoDeOrigem(url) {
+        try {
+          var u = new URL(url, location.href);
+          if (u.searchParams.get('o')) return url;
+          u.searchParams.set('o', CODIGO);
+          return u.toString();
+        } catch (e) { return url; }
+      }
+
+      var MARCA = 'data-origem-aplicada';
+
+      function carimbarLinks() {
+        var zap = document.querySelectorAll('a[href*="wa.me"], a[href*="api.whatsapp.com"]');
+        for (var i = 0; i < zap.length; i++) {
+          if (zap[i].getAttribute(MARCA)) continue;
+          zap[i].setAttribute('href', comOrigem(zap[i].getAttribute('href') || ''));
+          zap[i].setAttribute(MARCA, '1');
+        }
+        var quiz = document.querySelectorAll('a[href*="/quiz"], a[href*="quiz.institutorumo.com"], a[href*="quiz-diagnostico-pais"]');
+        for (var j = 0; j < quiz.length; j++) {
+          if (quiz[j].getAttribute(MARCA)) continue;
+          quiz[j].setAttribute('href', comCodigoDeOrigem(quiz[j].getAttribute('href') || ''));
+          quiz[j].setAttribute(MARCA, '1');
+        }
+      }
+
+      // O quiz abre o WhatsApp por window.open, sem link nenhum no HTML.
+      // Precisa ser trocado aqui no head, antes do bundle React carregar.
+      var abrirOriginal = window.open;
+      window.open = function () {
+        var args = Array.prototype.slice.call(arguments);
+        if (typeof args[0] === 'string' && /wa\.me|api\.whatsapp\.com/.test(args[0])) {
+          args[0] = comOrigem(args[0]);
+        }
+        return abrirOriginal.apply(window, args);
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', carimbarLinks);
+      } else {
+        carimbarLinks();
+      }
+      // O React monta a tela depois. O MutationObserver pega o que nascer
+      // dali em diante; a marca no atributo impede carimbar duas vezes.
+      if (window.MutationObserver) {
+        new MutationObserver(carimbarLinks)
+          .observe(document.documentElement, { childList: true, subtree: true });
+      }
+
+      // Para conferir no console: window.rumoOrigem
+      window.rumoOrigem = origem;
+    })();
+    </script>
+<script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
