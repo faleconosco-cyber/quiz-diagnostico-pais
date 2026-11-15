@@ -93,6 +93,11 @@
                                        utm_source=google + utm_medium=cpc
            Meta Ads .................. utm_source=meta (ou facebook, ou
                                        instagram) + utm_medium=paid_social
+           Instagram, bio ............ utm_medium=social + utm_source
+                                       instagram ou ig. O hub da bio
+                                       (links.institutorumo.com) escreve
+                                       "ig", por isso os dois valem. Tem
+                                       prioridade sobre o fbclid
            Meta, pago nao confirmado . so fbclid, sem utm. O fbclid e posto
                                        pelo Facebook e pelo Instagram em
                                        QUALQUER link clicado la dentro, o
@@ -123,6 +128,7 @@
       var ADS = 'Google Ads';
       var META_ADS = 'Meta Ads';
       var META_ABERTO = 'Meta, pago não confirmado';
+      var BIO = 'Instagram — bio';
       var ORGANICO = 'Google orgânico provável';
       var DESCONHECIDA = 'não identificada';
 
@@ -131,19 +137,21 @@
       PESO[DESCONHECIDA] = 0;
       PESO[ORGANICO] = 1;
       PESO[META_ABERTO] = 2;
-      PESO[META_ADS] = 3;
-      PESO[ADS] = 3;
+      PESO[BIO] = 3;
+      PESO[META_ADS] = 4;
+      PESO[ADS] = 4;
 
       // Codigo curto que viaja na URL do quiz, para a barra de endereco nao
       // ficar com texto acentuado no meio.
       var POR_CODIGO = {
-        ads: ADS, meta: META_ADS, metaaberto: META_ABERTO,
+        ads: ADS, meta: META_ADS, metaaberto: META_ABERTO, bio: BIO,
         organico: ORGANICO, direto: DESCONHECIDA
       };
       var PARA_CODIGO = {};
       PARA_CODIGO[ADS] = 'ads';
       PARA_CODIGO[META_ADS] = 'meta';
       PARA_CODIGO[META_ABERTO] = 'metaaberto';
+      PARA_CODIGO[BIO] = 'bio';
       PARA_CODIGO[ORGANICO] = 'organico';
       PARA_CODIGO[DESCONHECIDA] = 'direto';
 
@@ -173,6 +181,15 @@
                param('utm_medium').toLowerCase() === 'paid_social';
       }
 
+      // Link da bio do Instagram. Vem antes do fbclid de proposito: quem
+      // clica na bio chega com fbclid tambem, e sem esta regra o lead
+      // organico da bio seria contado como "pago nao confirmado".
+      function ehBioDoInstagram() {
+        var s = param('utm_source').toLowerCase();
+        return (s === 'instagram' || s === 'ig') &&
+               param('utm_medium').toLowerCase() === 'social';
+      }
+
       function veioDaBuscaDoGoogle() {
         var ref = document.referrer || '';
         if (!ref) return false;
@@ -187,6 +204,7 @@
       function detectarNestaPagina() {
         if (temSinalDeAnuncio()) return ADS;
         if (temSinalDeAnuncioMeta()) return META_ADS;
+        if (ehBioDoInstagram()) return BIO;
         var repassada = POR_CODIGO[param('o')];
         if (repassada) return repassada;
         // fbclid sozinho nao prova anuncio: o Meta poe ele tambem em link
